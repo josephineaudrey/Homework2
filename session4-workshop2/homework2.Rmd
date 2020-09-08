@@ -14,9 +14,6 @@ output:
 
 
 ```{r, setup, include=FALSE}
-
-#test line for github
-
 knitr::opts_chunk$set(
   message = FALSE, 
   warning = FALSE, 
