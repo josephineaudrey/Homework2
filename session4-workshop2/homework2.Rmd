@@ -462,6 +462,8 @@ covid_data <- vroom(url)%>%
   clean_names()
 
 
+
+
 ```
 
 Given the data we have, I would like you to produce two graphs that show death % rate:
@@ -471,8 +473,36 @@ Given the data we have, I would like you to produce two graphs that show death %
 
 
 ```{r covid_challenge, echo=FALSE, out.width="100%"}
+
 knitr::include_graphics(here::here("images", "covid_death_rate_comorbidities.png"), error = FALSE)
 knitr::include_graphics(here::here("images", "covid_death_rate_icu.png"), error = FALSE)
+
+glimpse(covid_data)
+
+options(scipen=999)
+
+covid_co_morbidities <- covid_data %>% 
+  filter(medcond_yn == "Yes" | medcond_yn == "No",
+         sex == "Male" | sex == "Female", # filter out other, unknown and missing. Other is always zero.
+         age_group != "Unknown",
+         age_group != "NA"
+         ) %>% 
+  group_by(medcond_yn, age_group, sex) %>% 
+  summarise(death_rate = count(death_yn == "Yes")/n())
+
+covid_co_morbidities %>% 
+  ggplot(aes(
+    x = age_group,
+    y = death_rate,
+    fill=sex,
+    fill = medcond_yn
+  )) +
+  geom_bar(stat="identity", width=0.7, position=position_dodge(width=0.8)) +
+  coord_flip() +
+  facet_wrap(~ medcond_yn)
+
+  
+
 ```
 
 
