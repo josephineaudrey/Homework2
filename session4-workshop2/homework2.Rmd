@@ -283,6 +283,7 @@ Can we estimate the *population* proportion of Snapchat or Instagram users in 20
 1. Using the CI formula for proportions, please construct 95% CIs for men and women who used either Snapchat or Instagram
 
 ```{r}
+# I'm working on this - Josi
 gss %>% 
   mutate(snap_insta = case_when(
     snapchat == "Yes" | instagrm == "Yes" ~ "Yes",
