@@ -364,10 +364,45 @@ You can facet by year, and add an orange line at zero. Your plot should look lik
 knitr::include_graphics(here::here("images", "trump_approval_margin.png"), error = FALSE)
 ```
 
+```{r trump_margins}
+net_approval_plot <- approval_polllist %>%
+  filter(subgroup == "Voters") %>%
+  mutate(date = mdy(enddate),
+         year = year(date),
+         week = week(date)) %>%
+  group_by(year, week) %>%
+  summarise(avg_net_approval = mean(adjusted_approve - adjusted_disapprove),
+            sd_net_approval = sd(adjusted_approve - adjusted_disapprove),
+            count = n(),
+            #get t-critical value with (n-1) degrees of freedom
+            t_critical = qt(0.975, count - 1),
+            se_net_approval = sd_net_approval / sqrt(count),
+            margin_of_error = t_critical * se_net_approval,
+            net_approval_low = avg_net_approval - margin_of_error,
+            net_approval_high = avg_net_approval + margin_of_error) %>%
+  ggplot(aes(week, avg_net_approval)) +
+  geom_ribbon(aes(ymin = net_approval_low, ymax = net_approval_high), alpha = 0.4) +
+  geom_line() +
+  geom_point() +
+  geom_hline(aes(yintercept = 0), color = "orange") +
+  labs(
+    title = "Estimating Net Approval (approve - disapprove) for Donald Trump",
+    subtitle = "Weekly average of all polls",
+    x = "week of the year",
+    y = "Average Net Apporval (%)"
+  ) +
+  facet_wrap(~year)
+
+net_approval_plot
+```
+
 ## Compare Confidence Intervals
 
 Compare the confidence intervals for `week 15` (6-12 April 2020) and `week 34` (17-23 August 2020). Can you explain what's going on? One paragraph would be enough.
 
+>Answer
+
+- The confidence interval for 'week 15' is [-9.93, -6.197], and for 'week 34' it is a wider [-12.26, -7.553], indicating that the deviation of Trump's polls became larger from April to August. This may be ralated to the mixed reviews he received in the handling of domestic issues, such as COVID-19 and Black Lives Matter.
 
 # Gapminder revisited
 
