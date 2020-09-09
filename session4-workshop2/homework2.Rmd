@@ -47,7 +47,6 @@ library(vroom)
 
 # Climate change and temperature anomalies 
 
-Trying to edit :P
 
 If we wanted to study climate change, we can find data on the *Combined Land-Surface Air and Sea-Surface Water Temperature Anomalies* in the Northern Hemisphere at [NASA's Goddard Institute for Space Studies](https://data.giss.nasa.gov/gistemp). The [tabular data of temperature anomalies can be found here](https://data.giss.nasa.gov/gistemp/tabledata_v3/NH.Ts+dSST.txt)
 
@@ -82,6 +81,9 @@ You have two objectives in this section:
 glimpse(weather)
 ```
 
+    cols = -Year
+  )
+tidyweather
 
 ```{r tidyweather}
 weather_select <- weather %>% 
@@ -91,9 +93,6 @@ tidyweather <- weather_select %>%
   pivot_longer(
     names_to = "Month",
     values_to = "delta",
-    cols = -Year
-  )
-tidyweather
 
 
 ```
@@ -184,15 +183,16 @@ average_annual_anomaly <- tidyweather %>%
   group_by(Year) %>%   #grouping data by Year
   
   # creating summaries for mean delta 
-  # use `na.rm=TRUE` to eliminate NA (not available) values 
-  summarise(annual_average_delta = mean(delta, na.rm=TRUE)) 
+  summarise(annual_average_delta = mean(delta, na.rm=TRUE)) %>% 
+  # use `na.rm=TRUE` to eliminate NA (not available) values
+  filter(na.rm = TRUE)
 
 #plotting the data:
 ggplot(average_annual_anomaly, aes(x=Year, y= annual_average_delta))+
   geom_point()+
   
   #Fit the best fit line, using LOESS method
-  geom_smooth() +
+  geom_line(method = loess) +
   
   #change to theme_bw() to have white background + black frame around plot
   theme_bw() +
@@ -214,20 +214,24 @@ ggplot(average_annual_anomaly, aes(x=Year, y= annual_average_delta))+
 Your task is to construct a confidence interval for the average annual delta since 2011, both using a formula and using a bootstrap simulation with the `infer` package. Recall that the dataframe `comparison` has already grouped temperature anomalies according to time intervals; we are only interested in what is happening  between 2011-present.
 
 ```{r, calculate_CI_using_formula, eval=FALSE}
-
+library(infer)
 formula_ci <- comparison %>% 
 
   # choose the interval 2011-present
   filter(interval == "2011-present") %>% 
   # what dplyr verb will you use? 
-  
-  # calculate summary statistics for temperature deviation (delta) 
+  group_by(year) %>% 
+  # calculate summary statistics for temperature deviation (delta)
+  specify(response = delta) %>% 
+  generate(reps = 1000, type ="bootstrap") %>% 
+  calculate(stat = "mean") #%>% 
+   #%>% 
   # calculate mean, SD, count, SE, lower/upper 95% CI
-  summarise(
-    mean = mean(delta),
-    SD = sd(delta),
-    count = n()
-  ) %>% 
+  #summarise(
+    #mean = mean(delta),
+    #SD = sd(delta),
+    #count = n()
+ # )
 
   # what dplyr verb will you use? 
   
@@ -239,7 +243,9 @@ formula_ci
 ```{r, calculate_CI_using_bootstrap}
 
 # use the infer package to construct a 95% CI for delta
-
+formula_ci %>% 
+  get_confidence_interval(level = 0.95, type = "percentile")
+  
 ```
 
 > What is the data showing us? Please type your answer after (and outside!) this blockquote. You have to explain what you have done, and the interpretation of the result. One paragraph max, please!
@@ -278,8 +284,11 @@ Can we estimate the *population* proportion of Snapchat or Instagram users in 20
 
 ```{r}
 gss %>% 
-  filter(snapchat == "No",
-         instagrm == "No")
+  mutate(snap_insta = case_when(
+    snapchat == "Yes" | instagrm == "Yes" ~ "Yes",
+    snapchat == "No" & instagrm == "No" ~ "No",
+    TRUE ~ "NA"
+  ))
 
 
 ```
@@ -289,13 +298,27 @@ gss %>%
 
 Can we estimate the *population* proportion of Twitter users by education level in 2016?. 
 
-There are 5 education levels in variable `degree` which, in ascneding order of years of education, are Lt high school, High School, Junior college, Bachelor, Graduate. 
+There are 5 education levels in variable `degree` which, in ascending order of years of education, are Lt high school, High School, Junior college, Bachelor, Graduate. 
 
 1. Turn `degree` from a character variable into a factor variable. Make sure the order is the correct one and that levels are not sorted alphabetically which is what R by default does. 
 1. Create a  new variable, `bachelor_graduate` that is *Yes* if the respondent has either a `Bachelor` or `Graduate` degree. As before, if the recorded value for either was NA, the value in your new variable should also be NA.
 1. Calculate the proportion of `bachelor_graduate` who do (Yes) and who don't (No) use twitter. 
 1. Using the CI formula for proportions, please construct two 95% CIs for `bachelor_graduate` vs whether they use (Yes) and don't (No) use twitter. 
 1. Do these two Confidence Intervals overlap?
+
+```{r}
+
+gss %>% 
+  mutate(bachelor_graduate = case_when(
+    degree == "Bachelor" | degree == "Graduate" ~ "Yes",
+    degree == "NA" ~ "NA",
+    TRUE ~ "No"
+)) %>% 
+  filter(bachelor_graduate == "Yes") %>% 
+  select(twitter)
+
+
+```
 
 
 ## Email usage
@@ -307,6 +330,10 @@ Can we estimate the *population* parameter on time spent on email weekly?
 1. Using the `infer` package, calculate a 95% bootstrap confidence interval for the mean amount of time Americans spend on email weekly. Interpret this interval in context of the data, reporting its endpoints in “humanized” units (e.g. instead of 108 minutes, report 1 hr and 8 minutes). If you get a result that seems a bit odd, discuss why you think this might be the case.
 1. Would you expect a 99% confidence interval to be wider or narrower than the interval you calculated above? Explain your reasoning.
 
+```{r}
+as.numeric(gss$emailhr)
+
+```
 
 # Trump's Approval Margins
 
