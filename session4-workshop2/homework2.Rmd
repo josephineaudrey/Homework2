@@ -308,6 +308,8 @@ There are 5 education levels in variable `degree` which, in ascending order of y
 
 ```{r}
 
+# this is another test line
+
 gss %>% 
   mutate(bachelor_graduate = case_when(
     degree == "Bachelor" | degree == "Graduate" ~ "Yes",
