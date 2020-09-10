@@ -330,8 +330,59 @@ omega %>%
 Using your data manipulation and visualisation skills, please use the Brexit results dataframe (the same dataset you used in the pre-programme assignement) and produce the following plot. Use the correct colour for each party; google "UK Political Party Web Colours" and find the appropriate hex code for colours, not the default colours that R gives you.
 
 
-```{r brexit_challenge, echo=FALSE, out.width="100%"}
+```{r brexit_challenge, echo=FALSE, out.width="100%", fig.width=4.5, fig.height=3}
+
 knitr::include_graphics(here::here("images", "brexit.png"), error = FALSE)
+
+brexit_results <- read_csv(here::here("Data","brexit_results.csv"))
+
+brexit_long<-brexit_results%>%
+pivot_longer(
+    cols=c(con_2015,lab_2015,ld_2015,ukip_2015),
+    names_to="party",values_to="proportion")%>%
+    select(c(Seat,leave_share,party,proportion))
+
+ggplot(brexit_long)+
+  geom_point(aes(x=proportion,y=leave_share,color=party),alpha=0.4)+
+  stat_smooth(data=subset(brexit_long,party=="con_2015"),
+              aes(x=proportion,y=leave_share),
+              color="#0087DC",
+              method = "lm", se = T) +
+  stat_smooth(data=subset(brexit_long,
+              party=="lab_2015"),                             
+              aes(x=proportion,y=leave_share),
+              color="#DC241f",
+              method = "lm",
+              se =T) + 
+  stat_smooth(data=subset(brexit_long,party=="ld_2015"),              
+              aes(x=proportion,y=leave_share),
+              color="#FDBB30",
+              method = "lm",
+              se = T) +
+  stat_smooth(data=subset(brexit_long,party=="ukip_2015"),
+              aes(x=proportion,y=leave_share),
+              color="#FFFF00",
+              method = "lm",
+              se = T)+
+labs(
+    title = "How political affiliation translated to Brexit voting",
+    x = "Party % in the UK 2015 general election",
+    y = "Leave % in the 2016 Brexit referendum",
+    fill = "Party") +
+scale_color_manual(
+    values = c("#0087DC", "#DC241f", "#FDBB30", "#FFFF00"),
+    labels = c("Conservative", "Labour", "Lib Dems", "UKIP")) +
+scale_shape_manual(values = c(16, 17)) +
+guides(linetype = guide_legend(override.linetype = c(16,17)))+
+#change the scale of the x and y axis
+coord_cartesian( 
+    xlim = c(0, 85), 
+    ylim = c(20, 100)) +
+theme_bw()+
+theme(legend.position = "bottom",legend.title = element_blank()) +
+NULL
+
+
 ```
 
 
