@@ -462,8 +462,6 @@ covid_data <- vroom(url)%>%
   clean_names()
 
 
-
-
 ```
 
 Given the data we have, I would like you to produce two graphs that show death % rate:
@@ -477,30 +475,50 @@ Given the data we have, I would like you to produce two graphs that show death %
 knitr::include_graphics(here::here("images", "covid_death_rate_comorbidities.png"), error = FALSE)
 knitr::include_graphics(here::here("images", "covid_death_rate_icu.png"), error = FALSE)
 
-glimpse(covid_data)
-
 options(scipen=999)
 
 covid_co_morbidities <- covid_data %>% 
-  filter(medcond_yn == "Yes" | medcond_yn == "No",
+  filter(medcond_yn == "Yes" | medcond_yn == "No", #filter out unknown and missing
          sex == "Male" | sex == "Female", # filter out other, unknown and missing. Other is always zero.
          age_group != "Unknown",
          age_group != "NA"
          ) %>% 
   group_by(medcond_yn, age_group, sex) %>% 
-  summarise(death_rate = count(death_yn == "Yes")/n())
+  summarise(death_rate = count(death_yn == "Yes")/n()*100)
+
+covid_ICU <- covid_data %>% 
+  filter(icu_yn == "Yes" | icu_yn == "No", #filter out unknown and missing
+         sex == "Male" | sex == "Female", # filter out other, unknown and missing. Other is always zero.
+         age_group != "Unknown",
+         age_group != "NA"
+         ) %>% 
+  group_by(icu_yn, age_group, sex) %>% 
+  summarise(death_rate = count(death_yn == "Yes")/n()*100)
 
 covid_co_morbidities %>% 
   ggplot(aes(
     x = age_group,
     y = death_rate,
     fill=sex,
-    fill = medcond_yn
+    label = round(death_rate, digits = 1)
   )) +
-  geom_bar(stat="identity", width=0.7, position=position_dodge(width=0.8)) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  geom_text() +
   coord_flip() +
-  facet_wrap(~ medcond_yn)
+  facet_grid(vars(medcond_yn), vars(sex))
 
+covid_ICU %>% 
+  ggplot(aes(
+    x = age_group,
+    y = death_rate,
+    fill=sex,
+    label = round(death_rate, digits = 1)
+  )) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  geom_text() +
+  coord_flip() +
+  facet_grid(vars(icu_yn), vars(sex))
+  
   
 
 ```
