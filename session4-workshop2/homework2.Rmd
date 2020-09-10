@@ -284,12 +284,57 @@ Can we estimate the *population* proportion of Snapchat or Instagram users in 20
 1. Using the CI formula for proportions, please construct 95% CIs for men and women who used either Snapchat or Instagram
 
 ```{r}
-gss %>% 
+gss_snap_insta <- gss %>%
+  # create the new variable for snap_insta
   mutate(snap_insta = case_when(
-    snapchat == "Yes" | instagrm == "Yes" ~ "Yes",
+    snapchat == "Yes" | instagrm == "Yes" ~ "Yes", 
     snapchat == "No" & instagrm == "No" ~ "No",
-    TRUE ~ "NA"
-  ))
+    TRUE ~ NA_character_)) 
+  
+# calculate the proportion
+gss_prop <- gss_snap_insta %>%
+  filter(!is.na(snap_insta)) %>% 
+  group_by(snap_insta) %>% 
+  summarise(count = n()) %>% 
+  mutate(prop = count/sum(count)) 
+
+gss_prop
+
+# percentile_ci
+snap_insta_formula_ci <- gss_snap_insta %>%
+  group_by(sex) %>%
+  # using the CI formula m +- z * se
+  summarize(p_hat = prop(snap_insta == "Yes"),
+            count = n(),
+            se = sqrt((p_hat * (1 - p_hat)) / count),
+            t_critical = qt(0.975, count-1),
+            margin_of_error = t_critical*se,
+            lower_95 = p_hat - margin_of_error,
+            upper_95 = p_hat + margin_of_error)
+
+snap_insta_formula_ci
+
+# additional plot for practice -> check the way that he did it in a previous example ?
+histogram_si <- ggplot(snap_insta_formula_ci,  
+       aes(x = sex,
+           y = p_hat,
+           colour = sex)) +
+   geom_errorbar(aes(ymin = lower_95,
+                     ymax = upper_95),
+                     width = 0.05,
+                     size  = 0.5) +
+   geom_point(shape = 15,
+              size  = 4) +
+   scale_y_continuous(limits=c(0,1)) +
+   theme_bw() +
+   theme(axis.title   = element_text(face  = "bold")) +
+   labs(x = "Gender",
+     y = "",
+   title = "Women are more likely than men to use Snapchat or Instagram in 2016") +
+   theme(legend.position = 'none') + 
+   NULL
+
+histogram_si
 
 
 ```
@@ -309,16 +354,69 @@ There are 5 education levels in variable `degree` which, in ascending order of y
 
 ```{r}
 
-# this is another test line
+# turn degree from a character variable into a factor variable 
+gss_factor <- gss %>%
+  mutate(degree = factor(degree, order = TRUE, levels = c("Lt high school", "High school", "Junior college", "Bachelor", "Graduate")))
 
-gss %>% 
+# create the new variable bachelor_graduate and assign values based on criteria below:
+gss_degree <- gss_factor %>%
   mutate(bachelor_graduate = case_when(
-    degree == "Bachelor" | degree == "Graduate" ~ "Yes",
-    degree == "NA" ~ "NA",
-    TRUE ~ "No"
-)) %>% 
-  filter(bachelor_graduate == "Yes") %>% 
-  select(twitter)
+    degree %in% c("Bachelor","Master") ~ "Yes", 
+    degree %in% c("Lt high school", "High school", "Junior college") ~ "No",
+    TRUE ~ "NA"
+    )) 
+
+# filter out NAs and filter for bachelor and graduates
+gss_bachelor <- gss_degree %>%
+  filter(bachelor_graduate == "Yes")
+
+
+# calculate the proportion of `bachelor_graduate` using twitter -> check error -> actually use " formula for difference in proportion"
+gss_twitter_prop <- gss_bachelor %>%
+  group_by(twitter) %>%
+  summarize(n = n()) %>%
+  mutate(prop_t = n/sum(n)) %>%
+  filter(twitter != "NA")
+
+gss_twitter_prop
+
+# construct CI for `bachelor_graduate` (not) using twitter (but with the NAs in the 100 % )
+twitter_formula_ci <- gss_twitter_prop %>%
+  filter(twitter != "NA") %>%
+   # use the CI formula m +- z * se
+  summarize(twitter = twitter,
+            p_hat_t = prop_t,
+            # se for difference in proportions is sqrt(((p(1-p))/n) + ((p(1-p))/n))
+            se_t = sqrt(sum((p_hat_t *(1-p_hat_t))/n)),
+            count_t = n,
+            t_critical_t = qt(0.975, count_t-1),
+            margin_of_error_t = t_critical_t*se_t,
+            lower_95_t = p_hat_t - margin_of_error_t,
+            upper_95_t = p_hat_t + margin_of_error_t)
+
+twitter_formula_ci
+  
+# check if Confidence Intervals overlap
+histogram_t <- ggplot(twitter_formula_ci,  
+       aes(x = twitter,
+           y = p_hat_t,
+           colour = twitter)) +
+   geom_errorbar(aes(ymin = lower_95_t,
+                     ymax = upper_95_t),
+                     width = 0.05,
+                     size  = 0.5) +
+   geom_point(shape = 15,
+              size  = 4) +
+   scale_y_continuous(limits=c(0,1)) +
+   theme_bw() +
+   theme(axis.title   = element_text(face  = "bold")) +
+   labs(x = "Twitter usage",
+        y = "",
+   title = "Twitter usage among people with a bachelor or graduate degree in 2016") +
+   theme(legend.position = 'none') + 
+   NULL
+
+histogram_t
 
 
 ```
@@ -334,9 +432,48 @@ Can we estimate the *population* parameter on time spent on email weekly?
 1. Would you expect a 99% confidence interval to be wider or narrower than the interval you calculated above? Explain your reasoning.
 
 ```{r}
-as.numeric(gss$emailhr)
+# create new variable email
+gss_email <- gss %>% 
+  filter(emailmin != "NA", emailhr != "NA") %>%
+  mutate(emailmin = as.numeric(emailmin), emailhr = as.numeric(emailhr)) %>%
+  mutate(email = emailhr*60 + emailmin)
+
+# visualise the distribution -> still add legends !!
+plot_email <- ggplot(gss_email, 
+  aes(x = email)) + 
+  geom_density() + 
+  geom_vline(aes(xintercept=mean(email, na.rm = T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=median(email, na.rm = T)),   # Ignore NA values for mean
+               color="blue", linetype="dashed", size=1) +
+  theme_bw()+
+  theme(legend.position = "none") +
+  labs(title = "Right-skewed distribution of time spent on emails by US adults",
+       x = "Minutes spent on emails per week",
+       y = " ")+
+  NULL
+
+plot_email
+
+# calculate a 95% bootstrap confidence interval for the mean
+boot_email <- gss_email %>% 
+  specify(response = email) %>% 
+  generate(reps = 1000, type = "bootstrap") %>% 
+  calculate(stat = "mean") 
+  
+boot_email
+
+# 95% CI and humanize units
+percentile_ci <- boot_email %>%
+  get_confidence_interval(level = 0.95, type = "percentile") 
+
+percentile_ci
+
+# still humanize units & add legend
 
 ```
+### Comparison to a 99% confidence interval
+A 99% confidence interval would be wider than a 95% confidence interval since you have to be more confident that the true value (in the case email minutes) falls within the interval we will need to allow more potential values within the interval. The confidence level most commonly adopted is 95%.
 
 # Trump's Approval Margins
 
