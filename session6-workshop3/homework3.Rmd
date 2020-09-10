@@ -70,6 +70,10 @@ You will first start with analyzing the `weight` of participants in kilograms. U
 ```{r, eda_on_weight}
 skimr::skim(yrbss)
 
+ggplot(yrbss, aes(
+  x = weight
+)) +
+  geom_histogram()
 ```
 
 Next, consider the possible relationship between a high schooler’s weight and their physical activity. Plotting the data is a useful first step because it helps us quickly visualize trends, identify strong associations, and develop research questions.
@@ -93,7 +97,13 @@ Can you provide a 95% confidence interval for the population proportion of high 
 Make a boxplot of `physical_3plus` vs. `weight`. Is there a relationship between these two variables? What did you expect and why?
 
 ```{r, boxplot}
-
+yrbss %>% 
+  filter(!is.na(physical_3plus)) %>% 
+ggplot(aes(
+  x = physical_3plus,
+  y = weight
+)) +
+  geom_boxplot()
 ```
 
 ## Confidence Interval
