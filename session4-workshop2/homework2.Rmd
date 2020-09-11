@@ -112,7 +112,7 @@ Let us plot the data using a time-series scatter plot, and add a trendline. To d
 > In the following chunk of code, I used the `eval=FALSE` argument, which does not run a chunk of code; I did so that you can knit the document before tidying the data and creating a new dataframe `tidyweather`. When you actually want to run this code and knit your document, you must delete `eval=FALSE`, **not just here but in all chunks were `eval=FALSE` appears.**
 
 
-```{r scatter_plot, eval=FALSE}
+```{r scatter_plot}
 
 tidyweather <- tidyweather %>%
   mutate(date = ymd(paste(as.character(Year), Month, "1")),
@@ -126,6 +126,8 @@ tidyweather_plot <- ggplot(tidyweather, aes(x=date, y = delta))+
   labs (
     title = "Weather Anomalies"
   )
+
+tidyweather_plot
 
 ```
 
@@ -680,7 +682,6 @@ url <- "https://data.cdc.gov/api/views/vbim-akqf/rows.csv?accessType=DOWNLOAD"
 covid_data <- vroom(url)%>%
   clean_names()
 
-
 ```
 
 Given the data we have, I would like you to produce two graphs that show death % rate:
@@ -703,7 +704,7 @@ covid_co_morbidities <- covid_data %>%
          age_group != "NA"
          ) %>% 
   group_by(medcond_yn, age_group, sex) %>% 
-  summarise(death_rate = count(death_yn == "Yes")/n()*100)
+ summarise(death_rate = count(death_yn == "Yes")/n()*100)
 
 covid_ICU <- covid_data %>% 
   filter(icu_yn == "Yes" | icu_yn == "No", #filter out unknown and missing
@@ -786,11 +787,96 @@ However, the challenge I want you to work on is to reproduce the following two g
 knitr::include_graphics(here::here("images", "tfl_monthly.png"), error = FALSE)
 ```
 
+```{r,fig.width=15}
+
+library(lubridate)
+
+bike_1<-bike%>%mutate(date=ymd(day),
+              month=month(day,label=TRUE),
+              year=year(date))%>%select(bikes_hired:month)
+
+bike_2<-bike_1%>%
+  filter(year>=2015)%>%
+  group_by(year,month)%>%
+  summarise(avg_bikes_hired=mean(bikes_hired))%>%
+  group_by(month)%>%
+  mutate(all_years_month_avg=mean(avg_bikes_hired))
+
+bike_1
+bike_2
+
+ggplot(bike_2, aes(x=month,group=1)) +
+  geom_line(aes(y = avg_bikes_hired), color = "darkred") + 
+  geom_line(aes(y = all_years_month_avg), color="darkblue")+
+facet_wrap(~year) + 
+  geom_ribbon(aes(
+    x = month,
+    ymin = avg_bikes_hired,
+    ymax = pmax(avg_bikes_hired,all_years_month_avg)),
+              alpha = 0.5,
+              fill="red") +
+  theme_bw() + 
+  geom_ribbon(aes(
+    x = month,
+    ymin = pmin(avg_bikes_hired,all_years_month_avg),
+    ymax = avg_bikes_hired),
+    alpha = 0.3,
+    fill = "green") +
+  ylab("Bikes Hired")+ 
+  xlab(" ") +
+  labs(
+      title = " Monthly Changes in TFL Bike Rental",
+      subtitle = " Change from monthly average shown in blue \n and calculated from 2015-2019",
+      caption = "Source:TfL, London Data Store") +
+  NULL
+
+```
+
 The second one looks at percentage changes from the expected level of weekly rentals. The two grey shaded rectangles correspond to the second (weeks 14-26) and fourth (weeks 40-52) quarters.
 
 ```{r tfl_percent_change, echo=FALSE, out.width="100%"}
 knitr::include_graphics(here::here("images", "tfl_weekly.png"), error = FALSE)
 ```
+
+```{r tfl_percent_change, echo=FALSE, out.width="100%",fig.width=25}
+
+bikes_weekly_all_years<-bike%>%
+filter(year >= 2015) %>%
+  group_by(week) %>%
+  mutate(avg_week_over_all_years = mean(bikes_hired)) %>%
+  group_by(year,week) %>%
+  mutate(avg_week_single_year = mean(bikes_hired)) %>%
+  mutate(pct_change = ((avg_week_single_year-avg_week_over_all_years)/avg_week_over_all_years)*100)
+
+bikes_weekly_all_years
+
+
+ggplot() +
+ geom_ribbon(data = bikes_weekly_all_years[bikes_weekly_all_years$pct_change >= 0, ], 
+             aes(
+               x = week, 
+               ymin = 0, 
+               ymax = pct_change),
+             alpha=0.5, fill="green") +
+  geom_ribbon(
+    data = bikes_weekly_all_years[bikes_weekly_all_years$pct_change < 0, ], 
+    aes(
+      x = week, 
+      ymin = pct_change, 
+      ymax = 0),
+      alpha=0.5, 
+      fill="red") +
+ geom_line(
+   data = bikes_weekly_all_years, 
+   aes(
+     x = week, 
+     y = pct_change
+     ))+
+  facet_wrap(~year)
+
+
+```
+
 
 For both of these graphs, you have to calculate the expected number of rentals per week or month between 2015-2019 and then, see how each week/month of 2020 compares to the expected rentals. Think of the calculation `excess_rentals = actual_rentals - expected_rentals`. 
 
@@ -2043,6 +2129,36 @@ However, the challenge I want you to work on is to reproduce the following two g
 ```{r tfl_absolute_monthly_change, echo=FALSE, out.width="100%"}
 knitr::include_graphics(here::here("images", "tfl_monthly.png"), error = FALSE)
 ```
+
+```{r,fig.width=15}
+
+library(lubridate)
+
+bike_1<-bike%>%mutate(date=ymd(day),
+              month=month(day,label=TRUE),
+              year=year(date))%>%select(bikes_hired:month)
+
+bike_2<-bike_1%>%
+  filter(year>=2015)%>%
+  group_by(year,month)%>%
+  summarise(avg_bikes_hired=mean(bikes_hired))%>%
+  group_by(month)%>%
+  mutate(all_years_month_avg=mean(avg_bikes_hired))
+
+bike_1
+bike_2
+
+ggplot(bike_2, aes(x=month,group=1)) +
+  geom_line(aes(y = avg_bikes_hired), color = "darkred") + 
+  geom_line(aes(y = all_years_month_avg), color="darkblue")+
+facet_wrap(~year) + 
+  geom_ribbon(aes(x=month,ymin=avg_bikes_hired,ymax=pmax(avg_bikes_hired,all_years_month_avg)),alpha=0.5,fill="red") +theme_bw() + 
+  geom_ribbon(aes(x=month,ymin=pmin(avg_bikes_hired,all_years_month_avg),ymax=avg_bikes_hired),alpha=0.3,fill="green")+ylab("Bikes Hired")+ 
+  xlab(" ") +
+  labs(title = " Monthly Changes in TFL Bike Rental",subtitle = " Change from monthly average shown in blue \n and calculated from 2015-2019",caption = "Source:TfL, London Data Store")
+
+```
+
 
 The second one looks at percentage changes from the expected level of weekly rentals. The two grey shaded rectangles correspond to the second (weeks 14-26) and fourth (weeks 40-52) quarters.
 
