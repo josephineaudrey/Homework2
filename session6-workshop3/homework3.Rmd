@@ -76,6 +76,8 @@ ggplot(yrbss, aes(
   geom_histogram()
 ```
 
+Answer: We are missing 1004 observations
+
 Next, consider the possible relationship between a high schooler’s weight and their physical activity. Plotting the data is a useful first step because it helps us quickly visualize trends, identify strong associations, and develop research questions.
 
 Let’s create a new variable `physical_3plus`, which will be `yes` if they are physically active for at least 3 days a week, and `no` otherwise.
@@ -105,6 +107,8 @@ ggplot(aes(
 )) +
   geom_boxplot()
 ```
+
+Answer: There does not seem to be a relationship between these two variables since the weight is pretty similar in all categories. This makes sense because people who do not exercise a lot will probably weigh more because of their fat and people who do exercise a lot will weigh more because of their muscles.
 
 ## Confidence Interval
 
@@ -563,27 +567,34 @@ Secondly, recall that GDP is the sum of Household Expenditure (Consumption *C*),
 
 ```{r calc GDP}
 wide_GDP_data <- tidy_GDP_data %>%
-  pivot_wider(names_from = "Components", values_from = "Amount") 
+  pivot_wider(names_from = "Components", values_from = "Amount") %>%
+  select(Country, Year, "Household expenditure":"GDP")
 
-glimpse(wide_GDP_data)
+wide_GDP_data
 
- wide_GDP_calc <- wide_GDP_data %>%
+wide_GDP_calc <- wide_GDP_data %>%
    mutate(`Net Exports` = Exports - Imports) %>% 
    # GDP = C + I + G + Nx
    mutate(GDP_calc = (`Household expenditure` + `Gross capital formation` + `Government expenditure` + `Net Exports`))
  
-glimpse(wide_GDP_calc)
-
-
+wide_GDP_calc
 ```
 
 > What is the % difference between what you calculated as GDP and the GDP figure included in the dataframe?
 ```{r}
+# calculate % difference between GDP given and GDP calculated
 wide_GDP_calc_diff <- wide_GDP_calc %>%
-  mutate(GDP_diff = (GDP - GDP_calc))
+  mutate(GDP_diff = abs((GDP - GDP_calc)/GDP))
          
-         
-GDP_difference
+wide_GDP_calc_diff 
+
+difference_plot <- wide_GDP_calc_diff %>%
+  ggplot(aes(x=GDP_diff)) +
+  geom_histogram()
+
+difference_plot
+
+sum(wide_GDP_calc_diff$GDP_diff, na.rm = TRUE)
 ```
 
 
@@ -592,11 +603,62 @@ knitr::include_graphics(here::here("images", "gdp2.png"), error = FALSE)
 ```
 
 
-
 > What is this last chart telling you? Can you explain in a couple of paragraphs the different dynamic among these three countries? 
+
+This graph shows the proportion of GDP components in Germany, India, and the US.
+
+In Germany, these proportions have stayed relatively constant over the years. As in the other two countries, Household Expenditure represents the largest proportion of GDP at around 60%. Net Exports have remained around 0%, meaning that Exports were almost equal to Imports. However, since the 2000s Exports have increased, leading to a trade surplus. This could possibly be related to the introduction of the Euro in 1999.
+
+India demonstrates quite some changes in proportion. The share of household expenditure has decreased significantly over the years while the share of gross capital formation has increased. This makes sense because India has developed a lot in the past years and it has been heavily invested in India. Unlike Germany, Net export are mostly below 0, which means that exports are lower than imports and there is a trade deficit.
+
+The US also has a trade deficit, which has increased over the years. It is interesting to see that the share of Government expenditure has decreased in the US while the share of gross capital formation has overtaken the share of Government expenditure. 
 
 
 > If you want to, please change `country_list <- c("United States","India", "Germany")` to include your own country and compare it with any two other countries you like
+
+```{r}
+# make a second country list
+country_list_2 <- c("United States","Switzerland", "Germany")
+
+# mutate into percentage
+wide_GDP_calc_prop <- wide_GDP_calc %>%
+  mutate(`Net exports` = `Net Exports` / GDP_calc,
+         `Household Expenditure` = `Household expenditure` / GDP_calc,
+         `Government Expenditure` = `Government expenditure` / GDP_calc,
+         `Gross Capital Formation` = `Gross capital formation` / GDP_calc ) %>%
+  select(Country, Year, "Net exports":"Gross Capital Formation")
+
+wide_GDP_calc_prop
+
+long_GDP_prop <- wide_GDP_calc_prop %>%
+    pivot_longer(cols = c(`Net exports`:`Gross Capital Formation`),
+                 names_to = "Component", 
+                 values_to = "Proportion")
+
+long_GDP_prop
+
+tidy_GDP_data_prop_filter <- tidy_GDP_data %>%
+    filter(Country %in% country_list_2, Components %in% indicator_list) 
+
+# graph
+countries_prop <- long_GDP_prop %>%
+  filter(Country %in% country_list_2) %>%
+  ggplot(aes(x = Year, y = Proportion, color = Component)) +
+  geom_line(aes(group = Component)) +
+  facet_wrap(~Country) +
+  theme_bw() + 
+  labs(title = "GDP and its breakdown at constant 2010 prices in US Doller",
+       y = "proportion", 
+       x = "") +
+  guides(colour = guide_legend("Components of GDP")) +
+  scale_x_discrete(breaks = seq(1970, 2017, by = 10)) + # scale correctly
+  scale_y_continuous(labels = scales::percent) + # label y axis with proportions
+  expand_limits(y = 0) +
+  NULL
+
+countries_prop 
+
+```
 
 
 # Deliverables
