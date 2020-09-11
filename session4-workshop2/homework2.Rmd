@@ -566,36 +566,36 @@ countries <-  wbstats::wb_cachelist$countries
 You have to join the 3 dataframes (life_expectancy, worldbank_data, and HIV) into one. You may need to tidy your data first and then perform [join operations](http://r4ds.had.co.nz/relational-data.html). Think about what type makes the most sense **and explain why you chose it**.
 
 ```{r}
-#pivot longer the 2th to 34th columns of estumated numbers of people living with HIV into one column
+#pivot longer the 2nd to 34th columns of estumated numbers of people living with HIV into one column
 hiv_long <- hiv %>%
   pivot_longer(cols=2:34, 
                names_to="year", 
                values_to = "estimated_hiv")
 hiv_long
 
+#pivot longer the 2nd to 302nd columns of life expectancy in countries to one column
 life_expectancy_long <- life_expectancy %>% 
   pivot_longer(cols=2:302, 
                names_to="year", 
                values_to = "life_expec")
-life_expectancy_long
 
-worldbank_data %>% 
-  rename(
-    gdpPercap = NY.GDP.PCAP.KD,
-    female_fertility = SP.DYN.TFRT.IN,
-    elementary_enrolment = SE.PRM.NENR, 
-    mortality_rate = SH.DYN.MORT)
+#rename columns in worldban_data
+names(worldbank_data)[5] <- "gdpPercap"
+names(worldbank_data)[6] <- "female_fertility"
+names(worldbank_data)[7] <- "elementary_enrolment"
+names(worldbank_data)[8] <- "mortality_rate"
 worldbank_data$date <- as.character(worldbank_data$date)
 
-#worldbank_data$year <- as.character(worldbank_data$year)
-
+#merge life expectancy and expected numbers of hiv patient into lifeExp_hiv
 lifeExp_hiv <- left_join(hiv_long, life_expectancy_long, by = c("year", "country"))
 
+#merge worldbank data and lifeExp_hiv into lifeExp_hiv_wb
 lifeExp_hiv_wb <- left_join(lifeExp_hiv, worldbank_data, 
                                  by = c("year"="date","country"))
 
+#merge country data into a complete dataframe
 complete_data <- full_join(lifeExp_hiv_wb,countries,by = "country")
-
+complete_data
 
 ```
 
@@ -619,16 +619,16 @@ NULL
 1. What is the relationship between fertility rate and GDP per capita? Generate a scatterplot with a smoothing line to report your results. You may find facetting by region useful
 
 ```{r}
-complete_data_filtered
+
 ggplot(complete_data_filtered) +
 geom_point(aes(
-  x = SP.DYN.TFRT.IN, 
-  y = NY.GDP.PCAP.KD
+  x = female_fertility, 
+  y = gdpPercap
 )) +
 geom_smooth(aes(
-  x = SP.DYN.TFRT.IN, 
-  y = NY.GDP.PCAP.KD)) +
-facet_wrap(~region) +
+  x = female_fertility, 
+  y = gdpPercap)) +
+facet_wrap(~region, scales = "free") +
 NULL
 ```
 
@@ -636,6 +636,7 @@ NULL
 1. Which regions have the most observations with missing HIV data? Generate a bar chart (`geom_col()`), in descending order.
 
 ```{r}
+
 missing_HIV_regions <- complete_data %>% 
   group_by(region) %>% 
   summarise(missing_HIV_data = count(is.na(estimated_hiv))) %>% 
@@ -657,6 +658,21 @@ ggplot(aes(
 1. How has mortality rate for under 5 changed by region? In each region, find the top 5 countries that have seen the greatest improvement, as well as those 5 countries where mortality rates have had the least improvement or even deterioration.
 
 ```{r}
+mortality <- complete_data %>%
+  select(1,2,10,18)%>%
+  drop_na()
+
+ggplot(mortality) +
+geom_point(aes(
+  x = "year", 
+  y = "mortality_rate"
+)) +
+geom_smooth(aes(
+  x = "year", 
+  y = "mortality_rate")) +
+facet_wrap(~region, scales = "free") +
+NULL
+  
 
 ```
 
@@ -664,6 +680,12 @@ ggplot(aes(
 1. Is there a relationship between primary school enrollment and fertility rate?
 
 ```{r}
+
+ggplot(complete_data_filtered) +
+geom_point(aes(x=female_fertility, y=elementary_enrolment)) +
+geom_smooth(aes(x=female_fertility, y=elementary_enrolment), se = FALSE)+
+facet_wrap(~region, scales = "free") +
+NULL
 
 ```
 
