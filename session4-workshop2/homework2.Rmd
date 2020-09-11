@@ -3495,7 +3495,7 @@ gss_email <- gss %>%
   mutate(emailmin = as.numeric(emailmin), emailhr = as.numeric(emailhr)) %>%
   mutate(email = emailhr*60 + emailmin)
 
-# visualise the distribution -> still add legends !!
+# visualise the distribution
 plot_email <- ggplot(gss_email, 
   aes(x = email)) + 
   geom_density() + 
@@ -3503,6 +3503,8 @@ plot_email <- ggplot(gss_email,
                color="red", linetype="dashed", size=1) +
   geom_vline(aes(xintercept=median(email, na.rm = T)),   # Ignore NA values for mean
                color="blue", linetype="dashed", size=1) +
+  annotate("text", x = 800, y = 0.0025, label = "mean", color="red") +
+  annotate("text", x = 500, y = 0.00261, label = "median", color="blue") +
   theme_bw()+
   theme(legend.position = "none") +
   labs(title = "Right-skewed distribution of time spent on emails by US adults",
@@ -3522,11 +3524,10 @@ boot_email
 
 # 95% CI and humanize units
 percentile_ci <- boot_email %>%
-  get_confidence_interval(level = 0.95, type = "percentile") 
+  get_confidence_interval(level = 0.95, type = "percentile") %>%
+  mutate(lower_ci_hum = lower_ci %/% 60 + (lower_ci %% 60)/100, upper_ci_hum = upper_ci %/% 60 + (upper_ci %% 60)/100)
 
 percentile_ci
-
-# still humanize units & add legend
 
 ```
 ### Comparison to a 99% confidence interval
