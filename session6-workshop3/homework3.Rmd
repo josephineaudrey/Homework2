@@ -206,7 +206,23 @@ Recall the IMBD ratings data. I would like you to explore whether the mean IMDB 
 
 
 ```{r directors, echo=FALSE, out.width="100%"}
-knitr::include_graphics(here::here("images", "directors.png"), error = FALSE)
+
+library(generics)
+movies1<-movies%>%
+  select(c(director,rating))%>%
+  filter(director==c("Steven Spielberg" ,"Tim Burton"))
+
+
+a<-ggplot(movies1, aes(x= rating, y=director, color= director)) +
+ geom_point(stat="summary", fun.y="mean", size=5) + 
+ geom_errorbar(stat="summary", fun.data="mean_se", fun.args = list(mult = 1.96), width=0.04, size=1.8)+
+labs(
+  title = "95 % confidence interval overlap",
+   x = "Mean IMDB Rating"
+ ) + theme_linedraw()+
+ NULL
+
+a + theme(plot.title = element_text(size = 15)) +labs(y = NULL)
 ```
 
 First, I would like you to reproduce this graph. You may find `geom_errorbar()` and `geom_rect()` useful.

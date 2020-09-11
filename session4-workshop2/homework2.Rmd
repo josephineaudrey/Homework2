@@ -441,12 +441,63 @@ histogram_t
 Can we estimate the *population* parameter on time spent on email weekly?
 
 1. Create a new variable called `email` that combines `emailhr` and `emailmin` to reports the number of minutes the respondents spend on email weekly.
-1. Visualise the distribution of this new variable. Find the mean and the median number of minutes respondents spend on email weekly. Is the mean or the median a better measure of the typical amoung of time Americans spend on email weekly? Why?
-1. Using the `infer` package, calculate a 95% bootstrap confidence interval for the mean amount of time Americans spend on email weekly. Interpret this interval in context of the data, reporting its endpoints in “humanized” units (e.g. instead of 108 minutes, report 1 hr and 8 minutes). If you get a result that seems a bit odd, discuss why you think this might be the case.
-1. Would you expect a 99% confidence interval to be wider or narrower than the interval you calculated above? Explain your reasoning.
+
+2. Visualise the distribution of this new variable. Find the mean and the median number of minutes respondents spend on email weekly. Is the mean or the median a better measure of the typical among of time Americans spend on email weekly? Why?
+
+The  median is a better measure than the mean for the typical amount of time Americans spend on email weekly since the mean is more sensitive to outliers than the median.
+
+3. Using the `infer` package, calculate a 95% bootstrap confidence interval for the mean amount of time Americans spend on email weekly. Interpret this interval in context of the data, reporting its endpoints in “humanized” units (e.g. instead of 108 minutes, report 1 hr and 8 minutes). If you get a result that seems a bit odd, discuss why you think this might be the case.
+
+The confidence interval and the mean are quite high because, as mentioned above, the mean is very sensitive to the  outlier in the data set. Thus, the values are higher than one might probably expect.
+
+4. Would you expect a 99% confidence interval to be wider or narrower than the interval you calculated above? Explain your reasoning.
+
+A 99% confidence interval would be wider than a 95% confidence interval since you have to be more confident that the true value (in the case email minutes) falls within the interval we will need to allow more potential values within the interval. The confidence level most commonly adopted is 95%.
 
 ```{r}
-as.numeric(gss$emailhr)
+# create new variable email
+gss_email <- gss %>% 
+  filter(emailmin != "NA", emailhr != "NA") %>%
+  mutate(emailmin = as.numeric(emailmin), emailhr = as.numeric(emailhr)) %>%
+  mutate(email = emailhr*60 + emailmin)
+
+# visualise the distribution
+plot_email <- ggplot(gss_email, 
+  aes(x = email)) + 
+  geom_density() + 
+  geom_vline(aes(xintercept=mean(email, na.rm = T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=median(email, na.rm = T)),   # Ignore NA values for mean
+               color="blue", linetype="dashed", size=1) +
+  annotate("text", x = 800, y = 0.0025, label = "mean", color="red") +
+  annotate("text", x = 500, y = 0.00261, label = "median", color="blue") +
+  theme_bw()+
+  theme(legend.position = "none") +
+  labs(
+    title = "Right-skewed distribution of time spent on emails by US adults",
+    x = "Minutes spent on emails per week",
+    y = " ") +
+
+  NULL
+
+plot_email
+
+# calculate a 95% bootstrap confidence interval for the mean
+boot_email <- gss_email %>% 
+  specify(response = email) %>% 
+  generate(reps = 1000, type = "bootstrap") %>% 
+  calculate(stat = "mean") 
+
+  
+boot_email
+
+# 95% CI and humanize units
+percentile_ci <- boot_email %>%
+  get_confidence_interval(level = 0.95, type = "percentile") %>%
+  mutate(lower_ci_hum = lower_ci %/% 60 + (lower_ci %% 60)/100, upper_ci_hum = upper_ci %/% 60 + (upper_ci %% 60)/100)
+
+percentile_ci
+visualise(boot_email)
 
 ```
 
@@ -569,35 +620,36 @@ countries <-  wbstats::wb_cachelist$countries
 You have to join the 3 dataframes (life_expectancy, worldbank_data, and HIV) into one. You may need to tidy your data first and then perform [join operations](http://r4ds.had.co.nz/relational-data.html). Think about what type makes the most sense **and explain why you chose it**.
 
 ```{r}
-#pivot longer the 2th to 34th columns of estumated numbers of people living with HIV into one column
+#pivot longer the 2nd to 34th columns of estumated numbers of people living with HIV into one column
 hiv_long <- hiv %>%
   pivot_longer(cols=2:34, 
                names_to="year", 
                values_to = "estimated_hiv")
 hiv_long
 
+#pivot longer the 2nd to 302nd columns of life expectancy in countries to one column
 life_expectancy_long <- life_expectancy %>% 
   pivot_longer(cols=2:302, 
                names_to="year", 
                values_to = "life_expec")
-life_expectancy_long
 
-worldbank_data %>% 
-  rename(
-    gdpPercap = NY.GDP.PCAP.KD,
-    female_fertility = SP.DYN.TFRT.IN,
-    elementary_enrolment = SE.PRM.NENR, 
-    mortality_rate = SH.DYN.MORT)
+#rename columns in worldban_data
+names(worldbank_data)[5] <- "gdpPercap"
+names(worldbank_data)[6] <- "female_fertility"
+names(worldbank_data)[7] <- "elementary_enrolment"
+names(worldbank_data)[8] <- "mortality_rate"
 worldbank_data$date <- as.character(worldbank_data$date)
 
-#worldbank_data$year <- as.character(worldbank_data$year)
-
+#merge life expectancy and expected numbers of hiv patient into lifeExp_hiv
 lifeExp_hiv <- left_join(hiv_long, life_expectancy_long, by = c("year", "country"))
 
+#merge worldbank data and lifeExp_hiv into lifeExp_hiv_wb
 lifeExp_hiv_wb <- left_join(lifeExp_hiv, worldbank_data, 
                                  by = c("year"="date","country"))
 
+#merge country data into a complete dataframe
 complete_data <- full_join(lifeExp_hiv_wb,countries,by = "country")
+complete_data
 
 
 ```
@@ -616,27 +668,39 @@ geom_point(aes(
 geom_smooth(aes(x=estimated_hiv, y=life_expec), se = FALSE)+
 NULL
 
-```
-
-
-1. What is the relationship between fertility rate and GDP per capita? Generate a scatterplot with a smoothing line to report your results. You may find facetting by region useful
-
-```{r}
-complete_data_filtered
 ggplot(complete_data_filtered) +
 geom_point(aes(
-  x = SP.DYN.TFRT.IN, 
-  y = NY.GDP.PCAP.KD
+  x=estimated_hiv, 
+  y=life_expec,
 )) +
-geom_smooth(aes(
-  x = SP.DYN.TFRT.IN, 
-  y = NY.GDP.PCAP.KD)) +
-facet_wrap(~region) +
+geom_smooth(aes(x=estimated_hiv, y=life_expec), se = FALSE)+
+facet_wrap(~region, scales = "free")+
 NULL
+
 ```
 
+Answer:
+In general, HIV prevelance seems to have a negative relationship with life expectancy. If we look at the relationship by region, the negative correlation is most obvious in Latin America and Carribean and Sub-Saharan Africa, while in the other 4 regions HIV prevelance do not have a clear linear relationship with life expectancy.
 
-1. Which regions have the most observations with missing HIV data? Generate a bar chart (`geom_col()`), in descending order.
+
+2. What is the relationship between fertility rate and GDP per capita? Generate a scatterplot with a smoothing line to report your results. You may find facetting by region useful
+
+```{r}
+ggplot(complete_data_filtered) +
+geom_point(aes(
+  x = female_fertility, 
+  y = gdpPercap
+)) +
+geom_smooth(aes(
+  x = female_fertility, 
+  y = gdpPercap)) +
+facet_wrap(~region, scales = "free") +
+NULL
+```
+In general, fertality is positively related to GDP per capita. This positive relationship is most obvious in Latin America and Carribean and Middle East & North Africa.
+
+
+3. Which regions have the most observations with missing HIV data? Generate a bar chart (`geom_col()`), in descending order.
 
 ```{r}
 missing_HIV_regions <- complete_data %>% 
@@ -655,12 +719,59 @@ ggplot(aes(
   
 
 ```
+Answer: 
+Sub-Saharan Africa has the most missing HIV data. Europe & Central Asia has the second most missing HIV data. 
 
 
-1. How has mortality rate for under 5 changed by region? In each region, find the top 5 countries that have seen the greatest improvement, as well as those 5 countries where mortality rates have had the least improvement or even deterioration.
+4. How has mortality rate for under 5 changed by region? In each region, find the top 5 countries that have seen the greatest improvement, as well as those 5 countries where mortality rates have had the least improvement or even deterioration.
 
 ```{r}
 
+mortality <- complete_data %>%
+  select(1,2,10,18)%>%
+  drop_na() 
+
+delta <- mortality %>%
+  group_by(country) %>% 
+  filter(year == min(year) | year == max(year))
+
+pivot_wider_delta <- delta %>% 
+  pivot_wider(names_from = year,
+              values_from = mortality_rate) %>% 
+  mutate(delta_mort_rate = `2011` - `1979`)
+
+
+top_5_mort_change <- pivot_wider_delta %>% 
+  select(country, delta_mort_rate) %>% 
+  arrange(desc(delta_mort_rate)) %>% 
+  head(n=5)
+
+bottom_5_mort_change <- pivot_wider_delta %>% 
+  select(country, delta_mort_rate) %>% 
+  filter(country != "Serbia") %>% 
+  arrange(desc(delta_mort_rate)) %>% 
+  tail(n=5)
+
+top_5_plot <- top_5_mort_change %>% 
+  ggplot(aes(
+    x = reorder(country,desc(delta_mort_rate)),
+    y = delta_mort_rate
+  )) +
+  geom_col()
+
+bottom_5_plot <- bottom_5_mort_change %>% 
+  ggplot(aes(
+    x = reorder(country,desc(delta_mort_rate)),
+    y = delta_mort_rate
+  )) +
+  geom_col() +
+  labs(
+    title = "Top 5 countries mortality increase"
+  )
+
+bottom_5_plot
+top_5_plot
+  
 ```
 
 
