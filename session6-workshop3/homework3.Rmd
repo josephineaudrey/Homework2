@@ -48,20 +48,12 @@ library(openintro)
 
 # Youth Risk Behavior Surveillance
 
-Every two years, the Centers for Disease Control and Prevention conduct the [Youth Risk Behavior Surveillance System (YRBSS)](https://www.cdc.gov/healthyyouth/data/yrbs/index.htm) survey, where it takes data from high schoolers (9th through 12th grade), to analyze health patterns. You will work with a selected group of variables from a random sample of observations during one of the years the YRBSS was conducted.
-
 ## Load the data
-
-This data is part of the `openintro` textbook and we can load and inspect it. There are observations on 13 different variables, some categorical and some numerical. The meaning of each variable can be found by bringing up the help file:
-
-?yrbss
 
 ```{r}
 data(yrbss)
 glimpse(yrbss)
 ```
-
-Before you carry on with your analysis, it's is always a good idea to check with `skimr::skim()` to get a feel for missing values, summary statistics of numerical variables, and a very rough histogram.
 
 ## Exploratory Data Analysis
 
@@ -77,11 +69,6 @@ ggplot(yrbss, aes(
 ```
 
 Answer: We are missing 1004 observations
-
-Next, consider the possible relationship between a high schooler’s weight and their physical activity. Plotting the data is a useful first step because it helps us quickly visualize trends, identify strong associations, and develop research questions.
-
-Let’s create a new variable `physical_3plus`, which will be `yes` if they are physically active for at least 3 days a week, and `no` otherwise.
-
   
 ```{r}
 yrbss <- yrbss %>% 
@@ -95,7 +82,6 @@ yrbss %>% filter(!is.na(physical_3plus)) %>%
 ```
 Can you provide a 95% confidence interval for the population proportion of high schools that are *NOT* active 3 or more days per week?
 
-  
 Make a boxplot of `physical_3plus` vs. `weight`. Is there a relationship between these two variables? What did you expect and why?
 
 ```{r, boxplot}
@@ -111,9 +97,6 @@ ggplot(aes(
 Answer: There does not seem to be a relationship between these two variables since the weight is pretty similar in all categories. This makes sense because people who do not exercise a lot will probably weigh more because of their fat and people who do exercise a lot will weigh more because of their muscles.
 
 ## Confidence Interval
-
-Boxplots show how the medians of the two distributions compare, but we can also compare the means of the distributions using either a confidence interval or a hypothesis test. Note that when we calculate the mean/SD, etc weight in these groups using the mean function, we must ignore any missing values by setting the `na.rm = TRUE`.
-
 
 ```{r}
 yrbss %>%
@@ -136,6 +119,8 @@ There is an observed difference of about 1.77kg (68.44 - 66.67), and we notice t
 ## Hypothesis test with formula
 
 Write the null and alternative hypotheses for testing whether mean weights are different for those who exercise at least times a week and those who don’t.
+Null hypothesis: Weight is independent of exercising at least three times a week. 
+ALternative hypothesis: There is a relationship between weight and exercisign at least three times a week.
 
 ```{r}
 t.test(weight ~ physical_3plus, data = yrbss)
@@ -145,24 +130,12 @@ t.test(weight ~ physical_3plus, data = yrbss)
 
 ## Hypothesis test with `infer`
 
-
-Next, we will introduce a new function, `hypothesize`, that falls into the infer workflow. You will use this method for conducting hypothesis tests.
-
-But first, we need to initialize the test, which we will save as `obs_diff`.
-
 ```{r}
 obs_diff <- yrbss %>%
   specify(weight ~ physical_3plus) %>%
   calculate(stat = "diff in means", order = c("yes", "no"))
 
 ```
-
-
-
-Notice how you can use the functions specify and calculate again like you did for calculating confidence intervals. Here, though, the statistic you are searching for is the difference in means, with the order being yes - no != 0.
-
-After you have initialized the test, you need to simulate the test on the null distribution, which we will save as null.
-
 
 ```{r}
 null_dist <- yrbss %>%
@@ -174,22 +147,11 @@ null_dist <- yrbss %>%
 ```
 
 
-Here, `hypothesize` is used to set the null hypothesis as a test for independence, i.e., that there is no difference between the two population means. In one sample cases, the null argument can be set to *point* to test a hypothesis relative to a point estimate.
-
-Also, note that the `type` argument within generate is set to permute, which is the argument when generating a null distribution for a hypothesis test.
-
-We can visualize this null distribution with the following code:
-
 ```{r}
 ggplot(data = null_dist, aes(x = stat)) +
   geom_histogram()
 
 ```
-
-
-Now that the test is initialized and the null distribution formed, we can visualise to see how many of these null permutations have a difference of at least `obs_stat` of `r obs_diff %>% pull() %>% round(2)`?
-
-We can also calculate the p-value for your hypothesis test using the function `infer::get_p_value()`.
 
 ```{r}
 
@@ -202,12 +164,8 @@ null_dist %>%
 ```
 
 
-This the standard workflow for performing hypothesis tests.
 
 # IMDB ratings: Differences between directors
-
-Recall the IMBD ratings data. I would like you to explore whether the mean IMDB rating for Steven Spielberg and Tim Burton are the same or not. I have already calculated the confidence intervals for the mean ratings of these two directors and as you can see they overlap. 
-
 
 ```{r directors, echo=FALSE, out.width="100%"}
 
@@ -229,32 +187,61 @@ labs(
 a + theme(plot.title = element_text(size = 15)) +labs(y = NULL)
 ```
 
-First, I would like you to reproduce this graph. You may find `geom_errorbar()` and `geom_rect()` useful.
-
-In addition, you will run a hpothesis test. You should use both the `t.test` command and the `infer` package to simulate from a null distribution, where you assume zero difference between the two.
 
 > Before anything, write down the null and alternative hypotheses, as well as the resulting test statistic and the associated t-stat or p-value. At the end of the day, what do you conclude?
 
-You can load the data and examine its structure
+The null hypothesis is that the rating is independent of the director.
+The alternative hypothesis is that there is a relationship between rating and director.
+We can reject the null hypothesis since the p-value is 0.012 which is smaller than 0.05.
+
 
 ```{r load-movies-data}
 movies <- read_csv(here::here("data", "movies.csv"))
 glimpse(movies)
 ```
 
-Your R code and analysis should go here. If you want to insert a blank chunk of R code you can just hit `Ctrl/Cmd+Alt+I` 
 
 ```{r}
+library(generics)
+movies1<-movies%>%
+  select(c(director,rating))%>%
+  filter(director==c("Steven Spielberg" ,"Tim Burton"))
 
+a<-ggplot(movies1, aes(x= rating, y=director, color= director)) +
+ geom_point(stat="summary", fun.y="mean", size=5) + 
+ geom_errorbar(stat="summary", fun.data="mean_se", fun.args = list(mult = 1.96), width=0.04, size=1.8)+
+labs(
+  title = "95 % confidence interval overlap",
+   x = "Mean IMDB Rating"
+ ) + theme_linedraw()+
+ NULL
+
+a + theme(plot.title = element_text(size = 15)) +labs(y = NULL)
+
+
+# hypothesis testing using t.test() 
+t.test(rating ~ director, data = movies1)
+
+# hypothesis testing using infer package
+director_diff <- movies1 %>%
+  specify(rating ~ director) %>%
+  calculate(stat = "diff in means", order = c("Steven Spielberg", "Tim Burton"))
+
+director_null <- movies1 %>%
+  specify(rating ~ director) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "diff in means", order = c("Steven Spielberg", "Tim Burton"))
+
+director_null %>% visualize() +
+  shade_p_value(obs_stat = director_diff, direction = "two-sided")
+
+director_null %>%
+  get_p_value(obs_stat = director_diff, direction = "two_sided")
 ```
 
 
 # Omega Group plc- Pay Discrimination
-
-
-At the last board meeting of Omega Group Plc., the headquarters of a large multinational company, the issue was raised that women were being discriminated in the company, in the sense that the salaries were not the same for male and female executives. A quick analysis of a sample of 50 employees (of which 24 men and 26 women) revealed that the average salary for men was about 8,700 higher than for women. This seemed like a considerable difference, so it was decided that a further analysis of the company salaries was warranted. 
-
-You are asked to carry out the analysis. The objective is to find out whether there is indeed a significant difference between the salaries of men and women, and whether the difference is due to discrimination or whether it is based on another, possibly valid, determining factor. 
 
 ## Loading the data
 
@@ -265,18 +252,6 @@ glimpse(omega) # examine the data frame
 ```
 
 ## Relationship Salary - Gender ?
-
-The data frame `omega`  contains the salaries for the sample of 50 executives in the company. Can you conclude that there is a significant difference between the salaries of the male and female executives?
-
-Note that you can perform different types of analyses, and check whether they all lead to the same conclusion 
-
-.	Confidence intervals
-.	Hypothesis testing
-.	Correlation analysis
-.	Regression
-
-
-Calculate summary statistics on salary by gender. Also, create and print a dataframe where, for each gender, you show the mean, SD, sample size, the t-critical, the SE, the margin of error, and the low/high endpoints of a 95% condifence interval
 
 ```{r, confint_single_valiables}
 # Summary Statistics of salary by gender
@@ -303,8 +278,6 @@ salary_sum_stats
 
 Answer:
 In this sample size, male's average salary is higher than the female's. Male's 95% confidence interval is also higher than the female's with no overlaps. If we take another sample, we are quite confident that the male's average salary would be higher than the female's in that sample too.
-
-You can also run a hypothesis testing, assuming as a null hypothesis that the mean difference in salaries is zero, or that, on average, men and women make the same amount of money. You should tun your hypothesis testing using `t.test()` and with the simulation method from the `infer` package.
 
 ```{r, hypothesis_testing}
 # hypothesis testing using t.test() 
@@ -335,7 +308,6 @@ We can refuse the null hypothesis. The mean salaries of male and female are sign
 
 ## Relationship Experience - Gender?
 
-At the board meeting, someone raised the issue that there was indeed a substantial difference between male and female salaries, but that this was attributable to other reasons such as differences in experience. A questionnaire send out to the 50 executives in the sample reveals that the average experience of the men is approximately 21 years, whereas the women only have about 7 years experience on average (see table below).
 
 ```{r, experience_stats}
 # Summary Statistics of salary by gender
@@ -372,11 +344,6 @@ There is a significant difference between the average experience of the male and
 
 ## Relationship Salary - Experience ?
 
-Someone at the meeting argues that clearly, a more thorough analysis of the relationship between salary and experience is required before any conclusion can be drawn about whether there is any gender-based salary discrimination in the company.
-
-Analyse the relationship between salary and experience. Draw a scatterplot to visually inspect the data
-
-
 ```{r, salary_exp_scatter}
 ggplot(omega, aes(experience, salary)) +
   geom_point() +
@@ -388,9 +355,7 @@ ggplot(omega, aes(experience, salary)) +
   )
 ```
 
-
 ## Check correlations between the data
-You can use `GGally:ggpairs()` to create a scatterplot and correlation matrix. Essentially, we change the order our variables will appear in and have the dependent variable (Y), salary, as last in our list. We then pipe the dataframe to `ggpairs()` with `aes` arguments to colour by `gender` and make ths plots somewhat transparent (`alpha  = 0.3`).
 
 ```{r, ggpairs}
 omega %>% 
@@ -404,10 +369,9 @@ omega %>%
 Answer:
 Salary and experience do have strong correlation and the correlation is higher within female. (CAN'T THINK OF MORE, NEED TO COME BACK)
 
+
+
 # Challenge 1: Brexit plot
-
-Using your data manipulation and visualisation skills, please use the Brexit results dataframe (the same dataset you used in the pre-programme assignement) and produce the following plot. Use the correct colour for each party; google "UK Political Party Web Colours" and find the appropriate hex code for colours, not the default colours that R gives you.
-
 
 ```{r brexit_challenge, echo=FALSE, out.width="100%", fig.width=4.5, fig.height=3}
 
@@ -468,9 +432,6 @@ NULL
 
 # Challenge 2:GDP components over time and among countries
 
-At the risk of oversimplifying things, the main components of gross domestic product, GDP are personal consumption (C), business investment (I), government spending (G) and net exports (exports - imports). You can read more about GDP and the different approaches in calculating at the [Wikipedia GDP page](https://en.wikipedia.org/wiki/Gross_domestic_product).
-
-
 ```{r read_GDP_data}
 
 UN_GDP_data  <-  read_excel(here::here("data", "Download-GDPconstant-USD-countries.xls"), # Excel filename
@@ -478,8 +439,6 @@ UN_GDP_data  <-  read_excel(here::here("data", "Download-GDPconstant-USD-countri
                 skip=2) # Number of rows to skip
 
 ```
-
- The first thing you need to do is to tidy the data, as it is in wide format and you must make it into long, tidy format. Please express all figures in billions (divide values by `1e9`, or $10^9$), and you want to rename the indicators into something shorter.
 
 ```{r reshape_GDP_data}
 
@@ -559,8 +518,6 @@ countries_3
 
 ```
 
-Secondly, recall that GDP is the sum of Household Expenditure (Consumption *C*), Gross Capital Formation (business investment *I*), Government Expenditure (G) and Net Exports (exports - imports). Even though there is an indicator `Gross Domestic Product (GDP)` in your dataframe, I would like you to calculate it given its components discussed above.
-
 ```{r calc GDP}
 wide_GDP_data <- tidy_GDP_data %>%
   pivot_wider(names_from = "Components", values_from = "Amount") %>%
@@ -577,6 +534,9 @@ wide_GDP_calc
 ```
 
 > What is the % difference between what you calculated as GDP and the GDP figure included in the dataframe?
+
+Answer: For every observation there can be small deviations between the calculated and the given GDP ranging up to 6%.
+
 ```{r}
 # calculate % difference between GDP given and GDP calculated
 wide_GDP_calc_diff <- wide_GDP_calc %>%
@@ -608,9 +568,6 @@ In Germany, these proportions have stayed relatively constant over the years. As
 India demonstrates quite some changes in proportion. The share of household expenditure has decreased significantly over the years while the share of gross capital formation has increased. This makes sense because India has developed a lot in the past years and it has been heavily invested in India. Unlike Germany, Net export are mostly below 0, which means that exports are lower than imports and there is a trade deficit.
 
 The US also has a trade deficit, which has increased over the years. It is interesting to see that the share of Government expenditure has decreased in the US while the share of gross capital formation has overtaken the share of Government expenditure. 
-
-
-> If you want to, please change `country_list <- c("United States","India", "Germany")` to include your own country and compare it with any two other countries you like
 
 ```{r}
 # make a second country list
