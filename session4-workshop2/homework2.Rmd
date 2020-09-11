@@ -613,8 +613,20 @@ geom_point(aes(
 geom_smooth(aes(x=estimated_hiv, y=life_expec), se = FALSE)+
 NULL
 
+ggplot(complete_data_filtered) +
+geom_point(aes(
+  x=estimated_hiv, 
+  y=life_expec,
+)) +
+geom_smooth(aes(x=estimated_hiv, y=life_expec), se = FALSE)+
+facet_wrap(~region, scales = "free")+
+NULL
+
+
 ```
 
+Answer:
+In general, HIV prevelance seems to have a negative relationship with life expectancy. If we look at the relationship by region, the negative correlation is most obvious in Latin America and Carribean and Sub-Saharan Africa, while in the other 4 regions HIV prevelance do not have a clear linear relationship with life expectancy.
 
 1. What is the relationship between fertility rate and GDP per capita? Generate a scatterplot with a smoothing line to report your results. You may find facetting by region useful
 
@@ -632,6 +644,9 @@ facet_wrap(~region, scales = "free") +
 NULL
 ```
 
+
+Answer:
+In general, fertality is positively related to GDP per capita. This positive relationship is most obvious in Latin America and Carribean and Middle East & North Africa.
 
 1. Which regions have the most observations with missing HIV data? Generate a bar chart (`geom_col()`), in descending order.
 
@@ -654,25 +669,31 @@ ggplot(aes(
 
 ```
 
+Answer: 
+Sub-Saharan Africa has the most missing HIV data. Europe & Central Asia has the second most missing HIV data. 
 
 1. How has mortality rate for under 5 changed by region? In each region, find the top 5 countries that have seen the greatest improvement, as well as those 5 countries where mortality rates have had the least improvement or even deterioration.
 
 ```{r}
 mortality <- complete_data %>%
   select(1,2,10,18)%>%
-  drop_na()
+  drop_na() 
 
 ggplot(mortality) +
 geom_point(aes(
-  x = "year", 
-  y = "mortality_rate"
+  x=year, 
+  y=mortality_rate,
+  color=country
 )) +
-geom_smooth(aes(
-  x = "year", 
-  y = "mortality_rate")) +
+geom_smooth(aes(x=year, y=mortality_rate), se = FALSE)+
 facet_wrap(~region, scales = "free") +
+theme(legend.position = "none")+
 NULL
-  
+
+mortality %>%
+  mutate(delta=)
+
+
 
 ```
 
@@ -689,6 +710,9 @@ NULL
 
 ```
 
+
+Answer:
+Across all six regions, primary school enrollment is negatively related with fertility rate. It seems intuitive, as when a family has more children, it adds on more financial stress to the parents to put all the children through education, therefore the primary school enrollment rate is lower.
 
 # Challenge 1: CDC COVID-19 Public Use Data
 
